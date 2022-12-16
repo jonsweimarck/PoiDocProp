@@ -1,32 +1,71 @@
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.junit.Test;
-import org.openxmlformats.schemas.officeDocument.x2006.customProperties.CTProperty;
 
-import java.io.*;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 public class DocPropTest {
 
+    private String copyFilePath;
+    private XWPFDocument doc;
+
     @Test
-    public void sdfsdfsdf()throws IOException {
+    public void replaceSingleSimpleFieldInEachParagraph() throws IOException {
 
-        String copyFilePath= createCopyOf("testpropdoc.docx");
-        XWPFDocument doc = new XWPFDocument(new FileInputStream(copyFilePath));
+        copyFilePath= createCopyOf("testpropdoc.docx");
+        doc = new XWPFDocument(new FileInputStream(copyFilePath));
+
+        // We start with a doc with some paragraphs, where two of them contain one simple field each.
+        // sanity check:
+        assertThat(getNumberOfParagraphs(doc), is(8));
+        assertThat(getNumerOfSmartFields(doc), is (2));
+        String expectedFullText = "Några fältTestprop1: <<testprop1>>Testprop2: <<testprop2>>Testprop3: <<testprop3>>Testprop4: <<testprop4>>";
+        assertThat(getAllText(doc), is(expectedFullText));
 
 
-        var userProps = doc.getProperties().getCustomProperties().getUnderlyingProperties();
-        for (CTProperty ctProp : userProps.getPropertyList()) {
-            System.out.println(ctProp.getName() + ":" + ctProp.getLpwstr());
+        var paras= doc.getParagraphs();
+        for(XWPFParagraph para : paras) {
+            var simpleFieldReplacer = new SimpleFieldReplacer(para);
+            simpleFieldReplacer.inlineReplaceSimpleFieldsWithText();
         }
-
-        userProps.getPropertyList().get(0).setLpwstr("Hello");
-        doc.enforceUpdateFields();
 
         saveAndClose(doc, copyFilePath);
 
+        // Now we want the same number of paragraphs and the same document text, but zero smart fields
+        doc = new XWPFDocument(new FileInputStream(copyFilePath));
+        assertThat(getNumberOfParagraphs(doc), is(8));
+        assertThat(getNumerOfSmartFields(doc), is (0));
+        assertThat(getAllText(doc), is(expectedFullText));
+
     }
+
+    private String getAllText(XWPFDocument doc) {
+        String returnString = "";
+
+        for (XWPFParagraph para : doc.getParagraphs()) {
+            returnString = returnString + para.getText();
+        }
+
+        return returnString;
+    }
+
+    private int getNumerOfSmartFields(XWPFDocument doc) {
+        int nbr = 0;
+        for (XWPFParagraph para : doc.getParagraphs()) {
+            nbr += para.getCTP().getFldSimpleArray().length;
+        }
+        return nbr;
+    }
+
+    private int getNumberOfParagraphs(XWPFDocument doc) {
+        return doc.getParagraphs().size();
+    }
+
 
     private String createCopyOf(String filename) throws IOException {
         String path = getClass().getResource(filename).getPath();
