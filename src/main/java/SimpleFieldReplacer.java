@@ -2,12 +2,36 @@ import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSimpleField;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Replaces all SimpleFields in a paragraph with the pure text each field contains.
  * After usage, expected is that the paragraph will look the same for a viewer using Word.
+ *
+ * Some tech:
+ * I POI, the XML based Word doxument is represented by XWPFDocument.
+ * Each paragraph in the doc is a XWPFParagraph.
+ * Each XWPFParagraph is further divided into "runs", XWPFRun. Each run holds formatting stuff and more for a bit of text.
+ *
+ * A simple field a is CTSimpleField, often (always?) inside a paragraph.
+ * The field holds a run, and that run holds the actual text that is shown.
+ *
+ * The XML would look something like this:
+ *
+ * <pre>
+ * {@code
+ *
+ * < w:fldSimple w:instr=" DOCPROPERTY testprop2 \* MERGEFORMAT ">
+ *   < w:r>
+ *     < w:t><<testprop2>>< /w:t>
+ *   < /w:r>
+ * < /w:fldSimple>
+ * }
+ * </pre>
+ *
+ * @see <a href="http://officeopenxml.com/WPfields.php">Office XML Open: Wordprocessing Fields</a>
+ *
  */
 public class SimpleFieldReplacer {
 
@@ -17,14 +41,24 @@ public class SimpleFieldReplacer {
         this.xwpfParagraph = xwpfParagraph;
     }
 
+
+    /**
+     * Replaces all simple fields in the paragraph with their pure text.
+     * Works like:
+     * 1. create a list of each simple field's run in the paragraph.
+     * 2. For each run in the list:
+     *  a. find its index of all runs in the paragrah.
+     *  b. copy the run to a new run on the same index (I guess pushing the simple field with its run to index+1, but that doesn't matter)
+     * 3. Find all simple fields and remove them, thereby also removing each field's run.
+     */
     public void inlineReplaceSimpleFieldsWithText() {
         var simpleFieldAndRunsHolder  = findRunForEachSimpleFields();
         replaceSimpleFieldsWithTextFromInsideRun(simpleFieldAndRunsHolder);
     }
 
-    private HashMap<CTSimpleField, XWPFRun> findRunForEachSimpleFields() {
+    private List<XWPFRun> findRunForEachSimpleFields() {
 
-        var simpleFieldAndRunsHolder  = new HashMap<CTSimpleField, XWPFRun>();
+        var runs  = new ArrayList<XWPFRun>();
 
         for (CTSimpleField simpleFieldToRemove : xwpfParagraph.getCTP().getFldSimpleArray()) {
 
@@ -33,27 +67,22 @@ public class SimpleFieldReplacer {
                     var candidateFieldNode = run.getCTR().getDomNode().getParentNode();
                     if(candidateFieldNode.equals(simpleFieldToRemove.getDomNode())){
                         //System.out.println("We have a match! " + run.getText(0));
-
-                        if(simpleFieldAndRunsHolder.containsKey(simpleFieldToRemove)){
-                            throw new RuntimeException("Until proven otherwise, a SimpleField should only contain a single Run. It now seems I've been proven otherwise");
-                        }
-                        simpleFieldAndRunsHolder.put(simpleFieldToRemove, run);
+                        runs.add(run);
                     }
                 }
             }
         }
-        return simpleFieldAndRunsHolder;
+        return runs;
     }
 
-    private void replaceSimpleFieldsWithTextFromInsideRun(HashMap<CTSimpleField, XWPFRun> simpleFieldAndRunHolder) {
+    private void replaceSimpleFieldsWithTextFromInsideRun(List<XWPFRun> runs) {
 
         //Add new run with same text as the one inside the SimpleField
-        for (Map.Entry<CTSimpleField, XWPFRun> entry : simpleFieldAndRunHolder.entrySet()) {
-
-            int runIndex = findRunIndexInParagraph(entry.getValue());
+        runs.forEach(oldRun -> {
+            int runIndex = findRunIndexInParagraph(oldRun);
             XWPFRun newRun = xwpfParagraph.insertNewRun(runIndex);
-            copyEverythingFromOldRunToNew(entry.getValue(), newRun);
-        }
+            copyEverythingFromOldRunToNew(oldRun, newRun);
+        });
 
         // Remove all SimpleFields
         int nbrOfFieldsToRemove = xwpfParagraph.getCTP().getFldSimpleArray().length;

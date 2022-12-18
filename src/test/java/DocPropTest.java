@@ -9,6 +9,8 @@ import java.io.IOException;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+// Makes use of the test doc testpropdoc.docx in the main/resources. The doc is copied to testpropdoc_copy.docx in the
+// test, so the original doc is never altered. The testpropdoc_copy.docx can be opened in Word to see the result of the test.
 public class DocPropTest {
 
     private String copyFilePath;
@@ -22,9 +24,9 @@ public class DocPropTest {
 
         // We start with a doc with some paragraphs, where two of them contain one simple field each.
         // sanity check:
+        String expectedFullText = "Några fältTestprop1: <<testprop1>>Testprop2: <<testprop2>>Testprop3: <<testprop3>>Testprop4: <<testprop4>>";
         assertThat(getNumberOfParagraphs(doc), is(8));
         assertThat(getNumerOfSmartFields(doc), is (2));
-        String expectedFullText = "Några fältTestprop1: <<testprop1>>Testprop2: <<testprop2>>Testprop3: <<testprop3>>Testprop4: <<testprop4>>";
         assertThat(getAllText(doc), is(expectedFullText));
 
 
