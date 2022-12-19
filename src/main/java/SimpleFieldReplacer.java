@@ -10,25 +10,22 @@ import java.util.List;
  * After usage, expected is that the paragraph will look the same for a viewer using Word.
  *
  * Some tech:
- * I POI, the XML based Word doxument is represented by XWPFDocument.
+ * In POI, the XML based Word doxument is represented by XWPFDocument.
  * Each paragraph in the doc is a XWPFParagraph.
- * Each XWPFParagraph is further divided into "runs", XWPFRun. Each run holds formatting stuff and more for a bit of text.
+ * Each XWPFParagraph is further divided into "runs", the class XWPFRun. Each run holds formatting stuff and more for a bit of text.
  *
- * A simple field a is CTSimpleField, often (always?) inside a paragraph.
+ * A simple field is a CTSimpleField, often (always?) placed inside a paragraph.
  * The field holds a run, and that run holds the actual text that is shown.
  *
  * The XML would look something like this:
  *
- * <pre>
- * {@code
- *
- * < w:fldSimple w:instr=" DOCPROPERTY testprop2 \* MERGEFORMAT ">
- *   < w:r>
- *     < w:t><<testprop2>>< /w:t>
- *   < /w:r>
- * < /w:fldSimple>
- * }
- * </pre>
+ * <pre>{@code
+ * <w:fldSimple w:instr=" DOCPROPERTY field_name \* MERGEFORMAT ">
+ *   <w:r>
+ *     <w:t>The text shown to the user< /w:t>
+ *   </w:r>
+ * </w:fldSimple>
+ * }</pre>
  *
  * @see <a href="http://officeopenxml.com/WPfields.php">Office XML Open: Wordprocessing Fields</a>
  *
@@ -97,7 +94,7 @@ public class SimpleFieldReplacer {
                return i;
            }
         }
-        throw new RuntimeException("Couldn't find expected Run i paragraph. " +
+        throw new RuntimeException("Couldn't find expected Run in paragraph. " +
                 "Run text: '" + run.getText(0) +"' Paragraph text '" +xwpfParagraph.getText() + "' ");
     }
 
