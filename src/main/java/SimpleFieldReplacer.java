@@ -84,10 +84,9 @@ public class SimpleFieldReplacer {
             copyEverythingFromOldRunToNew(oldRun, newRun);
         });
 
-        // Remove all SimpleFields
-        int nbrOfFieldsToRemove = xwpfParagraph.getCTP().getFldSimpleArray().length;
-        for(int fieldindex = 0; fieldindex<nbrOfFieldsToRemove; fieldindex++){
-            xwpfParagraph.getCTP().removeFldSimple(fieldindex);
+//        // Remove all SimpleFields
+        for(int nbrOfFieldsToRemove = xwpfParagraph.getCTP().getFldSimpleArray().length; nbrOfFieldsToRemove>0; nbrOfFieldsToRemove--){
+            xwpfParagraph.getCTP().removeFldSimple(0);
         }
     }
 
