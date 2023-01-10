@@ -9,8 +9,8 @@ import java.io.IOException;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-// Makes use of the test doc testpropdoc.docx in the main/resources. The doc is copied to testpropdoc_copy.docx in the
-// test, so the original doc is never altered. The testpropdoc_copy.docx can be opened in Word to see the result of the test.
+// Each test uses one of the test docs in the main/resources. The doc is copied to [originalname]_copy.docx in the
+// test, so the original doc is never altered. The XXXXXXX_copy.docx can be opened in Word to see the real result of the test.
 public class DocPropTest {
 
     private String copyFilePath;
@@ -19,7 +19,7 @@ public class DocPropTest {
     @Test
     public void replaceSingleSimpleFieldInEachParagraph() throws IOException {
 
-        copyFilePath= createCopyOf("testpropdoc.docx");
+        copyFilePath= createCopyOf("SingleSimpleFieldInEachParagraph.docx");
         doc = new XWPFDocument(new FileInputStream(copyFilePath));
 
         // We start with a doc with some paragraphs, where two of them contain one simple field each.
@@ -30,10 +30,9 @@ public class DocPropTest {
         assertThat(getAllText(doc), is(expectedFullText));
 
 
-        var paras= doc.getParagraphs();
-        for(XWPFParagraph para : paras) {
-            var simpleFieldReplacer = new SimpleFieldReplacer(para);
-            simpleFieldReplacer.inlineReplaceSimpleFieldsWithText();
+        var simpleFieldReplacer = new SimpleFieldReplacer();
+        for(XWPFParagraph para : doc.getParagraphs()) {
+            simpleFieldReplacer.inlineReplaceSimpleFieldsWithText(para);
         }
 
         saveAndClose(doc, copyFilePath);
@@ -41,6 +40,34 @@ public class DocPropTest {
         // Now we want the same number of paragraphs and the same document text, but zero smart fields
         doc = new XWPFDocument(new FileInputStream(copyFilePath));
         assertThat(getNumberOfParagraphs(doc), is(8));
+        assertThat(getNumerOfSmartFields(doc), is (0));
+        assertThat(getAllText(doc), is(expectedFullText));
+
+    }
+
+    @Test
+    public void replaceMultipleSimpleFieldsInSameParagraph() throws IOException {
+
+        copyFilePath= createCopyOf("MultipleSimpleFieldsInSameParagraph.docx");
+        doc = new XWPFDocument(new FileInputStream(copyFilePath));
+
+        // We start with a doc with one paragrap containing two simple fields.
+        // sanity check:
+        String expectedFullText = "Here <<testprop1>> is one instance of a smart field and here <<testprop2>> is another.";
+        assertThat(getNumberOfParagraphs(doc), is(1));
+        assertThat(getNumerOfSmartFields(doc), is (2));
+        assertThat(getAllText(doc), is(expectedFullText));
+
+        var simpleFieldReplacer = new SimpleFieldReplacer();
+        for(XWPFParagraph para : doc.getParagraphs()) {
+            simpleFieldReplacer.inlineReplaceSimpleFieldsWithText(para);
+        }
+
+        saveAndClose(doc, copyFilePath);
+
+        // Now we want the same number of paragraphs and the same document text, but zero smart fields
+        doc = new XWPFDocument(new FileInputStream(copyFilePath));
+        assertThat(getNumberOfParagraphs(doc), is(1));
         assertThat(getNumerOfSmartFields(doc), is (0));
         assertThat(getAllText(doc), is(expectedFullText));
 

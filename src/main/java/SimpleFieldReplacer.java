@@ -32,13 +32,6 @@ import java.util.List;
  */
 public class SimpleFieldReplacer {
 
-    private XWPFParagraph xwpfParagraph;
-
-    public SimpleFieldReplacer(XWPFParagraph xwpfParagraph) {
-        this.xwpfParagraph = xwpfParagraph;
-    }
-
-
     /**
      * Replaces all simple fields in the paragraph with their pure text.
      * Works like:
@@ -47,13 +40,15 @@ public class SimpleFieldReplacer {
      *  a. find its index of all runs in the paragrah.
      *  b. copy the run to a new run on the same index (I guess pushing the simple field with its run to index+1, but that doesn't matter)
      * 3. Find all simple fields and remove them, thereby also removing each field's run.
+     *
+     * Note the comment in #replaceSimpleFieldsWithTextFromInsideRun about a potential bug in POI that must be fended of with a magic number.
      */
-    public void inlineReplaceSimpleFieldsWithText() {
-        var simpleFieldAndRunsHolder  = findRunForEachSimpleFields();
-        replaceSimpleFieldsWithTextFromInsideRun(simpleFieldAndRunsHolder);
+    public XWPFParagraph inlineReplaceSimpleFieldsWithText(XWPFParagraph xwpfParagraph) {
+        var simpleFieldAndRunsHolder  = findRunForEachSimpleFields(xwpfParagraph);
+        return replaceSimpleFieldsWithTextFromInsideRun(xwpfParagraph, simpleFieldAndRunsHolder);
     }
 
-    private List<XWPFRun> findRunForEachSimpleFields() {
+    private List<XWPFRun> findRunForEachSimpleFields(XWPFParagraph xwpfParagraph) {
 
         var runs  = new ArrayList<XWPFRun>();
 
@@ -72,24 +67,34 @@ public class SimpleFieldReplacer {
         return runs;
     }
 
-    private void replaceSimpleFieldsWithTextFromInsideRun(List<XWPFRun> runs) {
+    private XWPFParagraph replaceSimpleFieldsWithTextFromInsideRun(XWPFParagraph xwpfParagraph, List<XWPFRun> runs) {
 
         //Add new run with same text as the one inside the SimpleField
-        runs.forEach(oldRun -> {
-            int runIndex = findRunIndexInParagraph(oldRun);
-            XWPFRun newRun = xwpfParagraph.insertNewRun(runIndex);
+        for(int i=0; i < runs.size(); i++) {
+            var oldRun = runs.get(i);
+            int runIndex = findRunIndexInParagraph(xwpfParagraph, oldRun);
+            // NOTE: The minus i below is needed because xwpfParagraph doesn't seem to update its internal
+            // count of how many Runs it contains. So the pos passed must be what the pos should be before any
+            // previous calls to insertNewRun. This old bug seems to be something similar: https://bz.apache.org/bugzilla/show_bug.cgi?id=57829
+            // (Or perhaps this is some kind of bug on my side ¯\_(ツ)_/¯ )
+            XWPFRun newRun = xwpfParagraph.insertNewRun(runIndex - i);
             copyEverythingFromOldRunToNew(oldRun, newRun);
-        });
+        }
 
         // Remove all SimpleFields
         int nbrOfFieldsToRemove = xwpfParagraph.getCTP().getFldSimpleArray().length;
-        for(int fieldindex = 0; fieldindex<nbrOfFieldsToRemove; fieldindex++){
-            xwpfParagraph.getCTP().removeFldSimple(fieldindex);
+        for(int i = 0; i < nbrOfFieldsToRemove; i++){
+            xwpfParagraph.getCTP().removeFldSimple(0); // we always remove at index zero, because the removal makes the list smaller each iteration
         }
+        return xwpfParagraph;
     }
 
-    private int findRunIndexInParagraph(XWPFRun run) {
-        for(int i =0; i < xwpfParagraph.getRuns().size(); i++){
+    private void printRuns(XWPFParagraph xwpfParagraph) {
+        xwpfParagraph.getRuns().forEach(System.out::println);
+    }
+
+    private int findRunIndexInParagraph(XWPFParagraph xwpfParagraph, XWPFRun run) {
+            for(int i =0; i < xwpfParagraph.getRuns().size(); i++){
            if(xwpfParagraph.getRuns().get(i).equals(run)){
                return i;
            }
