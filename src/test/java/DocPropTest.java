@@ -53,9 +53,9 @@ public class DocPropTest {
 
         // We start with a doc with one paragrap containing two simple fields.
         // sanity check:
-        String expectedFullText = "Here <<testprop1>> is one instance of a smart field and here <<testprop2>> is another.";
+        String expectedFullText = "Here <<testprop1>> is one instance of a smart field and here <<testprop2>> is another, while <<testprop1>> is a third.";
         assertThat(getNumberOfParagraphs(doc), is(1));
-        assertThat(getNumerOfSmartFields(doc), is (2));
+        assertThat(getNumerOfSmartFields(doc), is (3));
         assertThat(getAllText(doc), is(expectedFullText));
 
         var simpleFieldReplacer = new SimpleFieldReplacer();
